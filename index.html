@@ -4,87 +4,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Collaborative Code Editor</title>
-    <script src="https://ajaxorg.github.io/ace-builds/src/ace.js"></script>
-    <style type="text/css" media="screen">
-        .ace_editor {
-            position: absolute;
-            top: 0;
-            right: 0;
-            bottom: 0;
-            left: 0;
+    <title>CodeShare</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/hint/show-hint.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/hint/show-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/hint/xml-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/addon/hint/html-hint.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/htmlmixed/htmlmixed.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/darcula.min.css" integrity="sha512-kqCOYFDdyQF4JM8RddA6rMBi9oaLdR0aEACdB95Xl1EgaBhaXMIe8T4uxmPitfq4qRmHqo+nBU2d1l+M4zUx1g==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/edit/closebrackets.min.js" integrity="sha512-tsjcYO5hFvViRssxiM7Jhd8601epWOx1He3Hl4yuI5dKKPxr43KxkOhc9GZeeqzlYJm9ABb7UPA9697NiqZZ7Q==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/edit/closetag.min.js" integrity="sha512-XYx5xhl4B5vKNlaRBWh/nlti0+IPM6eT+dSFc3/oc4rERn2DpwbS3q4OblprqqBLXyRSVePKmf+8mHkDLtGZpg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <style>
+        .CodeMirror {
+            height: 100vh;
+            width: 100vw;
         }
     </style>
 </head>
 
 <body>
-    <div oninput="myinput()" onkeydown="onkey()" on id="editor"></div>
 
-    <!-- <textarea id="editor"></textarea> -->
+    <!-- <div id="editor"></div> -->
+    <textarea id="realtimeEditor"></textarea>
+
     <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
 
     <script>
+        var ref = CodeMirror.fromTextArea(
+            document.getElementById('realtimeEditor'),
+            {
+                mode: { name: 'javascript', json: true },
+                theme: 'darcula',
+                autoCloseTags: true,
+                autoCloseBrackets: true,
+                lineNumbers: true
+            }
+        );
+
         const socket = io();
-        const codeEditor = document.getElementById('editor');
 
-        // Initialize Ace Editor
-        const editor = ace.edit("editor");
-        editor.setTheme("ace/theme/twilight");
-        editor.session.setMode("ace/mode/javascript");
-
-
-        // Listen for code updates
         socket.on('update', (code) => {
-            // editor.session.insert({row: editor.session.getLength(), column: 0}, code);
-            editor.setValue(code);
-            editor.clearSelection();
+            ref.setValue(code);
         });
 
-        function myinput() {
-            console.log("mm");
-            const code = editor.getValue();
-            if (code == "") {
-                socket.emit('update', "blank");
-            }
-            socket.emit('update', code);
-        }
-        function onkey(params) {
-            console.log(params);
-        }
-
-        document.getElementById('editor').addEventListener('keydown', function (event) {
-            if (event.code == 'Delete') {
-                console.log('The physical key pressed was the DELETE key');
-            }
-            if (event.code == 'Backspace') {
-                console.log('The physical key pressed was the BACKSPACE key');
-            }
-            if (event.key == 'Delete') {
-                console.log('The keypress meant the same as pressing DELETE');
-                // This can happen for one of two reasons:
-                // 1. The user pressed the DELETE key
-                // 2. The user pressed FN+BACKSPACE on a small Mac keyboard where
-                //    FN+BACKSPACE deletes the character in front of the text cursor,
-                //    instead of the one behind it.
-            }
-            if (event.key == 'Backspace') {
-                console.log('The keypress meant the same as pressing BACKSPACE');
+        ref.on("change", (instance, changes) => {
+            console.log("change", changes);
+            const { origin } = changes;
+            const code = instance.getValue();
+            if (origin !== 'setValue') {
+                socket.emit('update', code);
             }
         });
 
-        // Update code and emit the changes
-        editor.session.addEventListener('exec', (d) => {
-            console.log("change");
-            console.log(d);
-            const code = editor.getValue();
-            socket.emit('update', code);
-        });
-        // editor.session.selection.on('changeSelection', function (e) {
-        //     console.log("selection change");
-        //     const code = editor.getValue();
-        //     socket.emit('update', code);
-        // });
     </script>
+
 </body>
 
 </html>

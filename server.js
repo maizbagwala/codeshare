@@ -1,15 +1,17 @@
 const express = require('express');
 const http = require('http');
 const socketIO = require('socket.io');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
 const io = socketIO(server);
 
 app.use(express.static('public'));
+app.use(express.static(path.join(__dirname, 'public')));
 
 app.get("/",(req,res)=>{
-    res.sendfile(__dirname+"/index2.html");
+    res.sendfile(__dirname+"/index.html");
 });
 
 io.on('connection', (socket) => {
@@ -20,7 +22,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('update', (code) => {
-    io.emit('update', code);
+    socket.broadcast.emit('update', code);
   });
 });
 
